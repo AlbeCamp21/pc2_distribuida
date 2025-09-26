@@ -2,14 +2,11 @@ package common;
 
 import java.io.Serializable;
 
-/**
- * Clase que representa los mensajes intercambiados entre cliente y servidor
- */
+// Clase representación de mensajes entre cliente y servidor
 public class Message implements Serializable {
     private static final long serialVersionUID = 1L;
-    
     public enum Type {
-        // Mensajes del cliente al servidor
+        // Mensajes de cliente al servidor
         CONNECT,
         DISCONNECT,
         MOVE_UP,
@@ -17,9 +14,8 @@ public class Message implements Serializable {
         MOVE_LEFT,
         MOVE_RIGHT,
         SET_DIFFICULTY,
-        START_GAME,
-        
-        // Mensajes del servidor al cliente
+        START_GAME,        
+        // Mensajes de servidor al cliente
         CONNECTION_ACCEPTED,
         CONNECTION_REJECTED,
         GAME_STATE,
@@ -48,13 +44,22 @@ public class Message implements Serializable {
         this.playerId = playerId;
     }
     
-    // Getters y setters
-    public Type getType() { return type; }
-    public void setType(Type type) { this.type = type; }
-    
-    public Object getData() { return data; }
-    public void setData(Object data) { this.data = data; }
-    
-    public int getPlayerId() { return playerId; }
-    public void setPlayerId(int playerId) { this.playerId = playerId; }
+    public Type getType() {
+        return type;
+    }
+    public void setType(Type type) {
+        this.type = type;
+    }    
+    public Object getData() {
+        return data;
+    }
+    public void setData(Object data){
+        this.data = data;
+    }    
+    public int getPlayerId(){
+        return playerId;
+    }
+    public void setPlayerId(int playerId){
+        this.playerId = playerId;
+    }
 }

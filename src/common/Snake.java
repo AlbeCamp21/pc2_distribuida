@@ -6,9 +6,7 @@ import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Clase que representa una serpiente en el juego
- */
+// Clase representa una serpiente
 public class Snake implements Serializable {
     private static final long serialVersionUID = 1L;
     
@@ -16,17 +14,18 @@ public class Snake implements Serializable {
         UP(0, -1),
         DOWN(0, 1),
         LEFT(-1, 0),
-        RIGHT(1, 0);
-        
-        private final int dx, dy;
-        
+        RIGHT(1, 0);        
+        private final int dx, dy;        
         Direction(int dx, int dy) {
             this.dx = dx;
             this.dy = dy;
+        }        
+        public int getDx(){
+            return dx;
         }
-        
-        public int getDx() { return dx; }
-        public int getDy() { return dy; }
+        public int getDy(){
+            return dy;
+        }
     }
     
     private List<Point> body;
@@ -40,13 +39,11 @@ public class Snake implements Serializable {
     public Snake(int playerId, Point startPosition, Color color) {
         this.playerId = playerId;
         this.body = new ArrayList<>();
-        
-        // Inicializar serpiente con 3 segmentos en línea hacia la izquierda
-        // Cabeza en startPosition, cuerpo extendiéndose hacia la izquierda
+        // Comienza serpiente con tamaño 3 hacia la izquierda
+        // Cabeza en startPosition, cuerpo se exitende hacia la izquierda
         this.body.add(new Point(startPosition.x, startPosition.y));     // Cabeza
-        this.body.add(new Point(startPosition.x - 1, startPosition.y)); // Cuerpo 1
-        this.body.add(new Point(startPosition.x - 2, startPosition.y)); // Cuerpo 2
-        
+        this.body.add(new Point(startPosition.x - 1, startPosition.y)); // Cuerpo
+        this.body.add(new Point(startPosition.x - 2, startPosition.y)); // Cuerpo        
         this.direction = Direction.RIGHT;
         this.nextDirection = Direction.RIGHT;
         this.color = color;
@@ -54,50 +51,54 @@ public class Snake implements Serializable {
         this.score = 0;
     }
     
-    /**
-     * Mueve la serpiente en la dirección actual
-     */
+    // Movimiento hacia donde ve la serpiente
     public void move() {
-        if (!alive) return;
-        
+        if (!alive) return;        
         // Actualizar dirección si no es opuesta a la actual
         if (isValidDirectionChange(nextDirection)) {
             direction = nextDirection;
-        }
-        
+        }        
         // Calcular nueva posición de la cabeza
         Point head = body.get(0);
         Point newHead = new Point(
             head.x + direction.getDx(),
             head.y + direction.getDy()
-        );
-        
+        );        
         // Agregar nueva cabeza
         body.add(0, newHead);
     }
     
-    /**
-     * Hace crecer la serpiente (no quita la cola)
-     */
+    // Crecimiento de la serpiente
     public void grow() {
-        // La serpiente ya creció al mover, solo aumentamos el score
+        // aumentamos el score (valor por defecto)
         score += 10;
     }
     
-    /**
-     * Quita la cola de la serpiente
-     */
+    // Crecimiento de la serpiente con comida específica
+    public void grow(Food food) {
+        // Aumentamos el score según el tipo de comida
+        score += food.getPoints();
+        
+        // Crecemos segmentos adicionales si es necesario
+        for (int i = 1; i < food.getGrowth(); i++) {
+            // Duplicamos el último segmento para hacer crecer la serpiente
+            if (!body.isEmpty()) {
+                Point lastSegment = body.get(body.size() - 1);
+                body.add(new Point(lastSegment.x, lastSegment.y));
+            }
+        }
+    }
+    
+    // Quita la cola de la serpiente
     public void removeTail() {
         if (body.size() > 1) {
             body.remove(body.size() - 1);
         }
     }
     
-    /**
-     * Verifica si el cambio de dirección es válido
-     */
+    // Verificación de movimiento
     private boolean isValidDirectionChange(Direction newDirection) {
-        // No se puede ir en dirección opuesta
+        // No se puede ir en dirección contraria
         switch (direction) {
             case UP: return newDirection != Direction.DOWN;
             case DOWN: return newDirection != Direction.UP;
@@ -107,9 +108,7 @@ public class Snake implements Serializable {
         }
     }
     
-    /**
-     * Verifica si la serpiente colisiona consigo misma
-     */
+    // Verificación si la serpiente choca consigo misma
     public boolean checkSelfCollision() {
         Point head = body.get(0);
         // Empezar desde el índice 1 para verificar colisión de cabeza con cuerpo
@@ -121,9 +120,7 @@ public class Snake implements Serializable {
         return false;
     }
     
-    /**
-     * Verifica si la serpiente colisiona con otra serpiente
-     */
+    // Verificación si la serpiente chocha con otra
     public boolean checkCollisionWith(Snake other) {
         Point head = body.get(0);
         for (Point segment : other.body) {
@@ -134,21 +131,37 @@ public class Snake implements Serializable {
         return false;
     }
     
-    // Getters y setters
-    public List<Point> getBody() { return body; }
-    public Point getHead() { return body.isEmpty() ? null : body.get(0); }
-    
-    public Direction getDirection() { return direction; }
-    public void setDirection(Direction direction) { this.nextDirection = direction; }
-    
-    public Color getColor() { return color; }
-    public void setColor(Color color) { this.color = color; }
-    
-    public int getPlayerId() { return playerId; }
-    
-    public boolean isAlive() { return alive; }
-    public void setAlive(boolean alive) { this.alive = alive; }
-    
-    public int getScore() { return score; }
-    public void setScore(int score) { this.score = score; }
+    public List<Point> getBody(){
+        return body;
+    }
+    public Point getHead(){
+        return body.isEmpty() ? null : body.get(0);
+    }    
+    public Direction getDirection(){
+        return direction;
+    }
+    public void setDirection(Direction direction){
+        this.nextDirection = direction;
+    }
+    public Color getColor(){
+        return color;
+    }
+    public void setColor(Color color){
+        this.color = color;
+    }    
+    public int getPlayerId(){
+        return playerId;
+    }    
+    public boolean isAlive(){
+        return alive;
+    }
+    public void setAlive(boolean alive){
+        this.alive = alive;
+    }    
+    public int getScore(){
+        return score;
+    }
+    public void setScore(int score){
+        this.score = score;
+    }
 }

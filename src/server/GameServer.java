@@ -8,16 +8,13 @@ import java.util.*;
 import java.util.List;
 import java.util.concurrent.*;
 
-/**
- * Servidor del juego Snake que maneja múltiples clientes
- */
+// Servidor del juego
 public class GameServer {
     private static final int DEFAULT_PORT = 12345;
     private static final int MAX_PLAYERS = 4;
     private static final int BOARD_WIDTH = 40;
     private static final int BOARD_HEIGHT = 30;
-    private static final int BASE_GAME_SPEED = 150; // ms entre actualizaciones
-    
+    private static final int BASE_GAME_SPEED = 150; // ms entre cada actualización    
     private ServerSocket serverSocket;
     private List<ClientHandler> clients;
     private GameEngine gameEngine;
@@ -28,32 +25,25 @@ public class GameServer {
         serverSocket = new ServerSocket(port);
         clients = new ArrayList<>();
         threadPool = Executors.newCachedThreadPool();
-        running = true;
-        
-        gameEngine = new GameEngine();
-        
+        running = true;        
+        gameEngine = new GameEngine();        
         System.out.println("Servidor Snake iniciado en puerto " + port);
-        System.out.println("Esperando conexiones...");
+        System.out.println("Esperando conexiones");
     }
     
     public void start() {
         // Iniciar el motor del juego en un hilo separado
-        threadPool.submit(gameEngine);
-        
+        threadPool.submit(gameEngine);        
         // Aceptar conexiones de clientes
         while (running && !serverSocket.isClosed()) {
             try {
-                Socket clientSocket = serverSocket.accept();
-                
+                Socket clientSocket = serverSocket.accept();                
                 if (clients.size() < MAX_PLAYERS) {
                     ClientHandler client = new ClientHandler(clientSocket, clients.size() + 1);
                     clients.add(client);
-                    threadPool.submit(client);
-                    
-                    System.out.println("Cliente conectado: " + clientSocket.getInetAddress() + 
-                                     " (Jugador " + client.getPlayerId() + ")");
-                    
-                    // Notificar a todos los clientes sobre el nuevo jugador
+                    threadPool.submit(client);                    
+                    System.out.println("Cliente conectado: " + clientSocket.getInetAddress() + " (Jugador " + client.getPlayerId() + ")");                    
+                    // Notificar sobre nuevo jugador
                     broadcastMessage(new Message(Message.Type.PLAYER_JOINED, client.getPlayerId()));
                 } else {
                     // Rechazar conexión si el servidor está lleno
@@ -72,22 +62,19 @@ public class GameServer {
     
     public void stop() {
         System.out.println("\nCerrando servidor...");
-        running = false;
-        
+        running = false;        
         try {
-            // Desconectar todos los clientes
+            // Desconectar a todos los jugadores
             for (ClientHandler client : new ArrayList<>(clients)) {
                 client.cleanup();
             }
-            clients.clear();
-            
-            // Cerrar el socket del servidor
+            clients.clear();            
+            // Cerrar socket del servidor
             if (serverSocket != null && !serverSocket.isClosed()) {
                 serverSocket.close();
                 System.out.println("Puerto liberado correctamente.");
-            }
-            
-            // Cerrar el pool de threads
+            }            
+            // Cerrar threads
             threadPool.shutdown();
             try {
                 if (!threadPool.awaitTermination(5, TimeUnit.SECONDS)) {
@@ -95,10 +82,8 @@ public class GameServer {
                 }
             } catch (InterruptedException e) {
                 threadPool.shutdownNow();
-            }
-            
-            System.out.println("Servidor cerrado exitosamente.");
-            
+            }            
+            System.out.println("Servidor cerrado exitosamente.");            
         } catch (IOException e) {
             System.err.println("Error cerrando servidor: " + e.getMessage());
         }
@@ -117,22 +102,17 @@ public class GameServer {
         System.out.println("Cliente desconectado: Jugador " + client.getPlayerId());
     }
     
-    /**
-     * Clase que maneja la comunicación con un cliente específico
-     */
+    // Clase que administra la comunicación con un cliente
     private class ClientHandler implements Runnable {
         private Socket socket;
         private ObjectInputStream input;
         private ObjectOutputStream output;
-        private int playerId;
-        
+        private int playerId;        
         public ClientHandler(Socket socket, int playerId) throws IOException {
             this.socket = socket;
             this.playerId = playerId;
             this.output = new ObjectOutputStream(socket.getOutputStream());
             this.input = new ObjectInputStream(socket.getInputStream());
-            
-            // Enviar confirmación de conexión
             sendMessage(new Message(Message.Type.CONNECTION_ACCEPTED, playerId));
         }
         
@@ -183,7 +163,7 @@ public class GameServer {
                 output.writeObject(message);
                 output.flush();
             } catch (IOException e) {
-                // Error enviando mensaje, cliente probablemente desconectado
+                // Error enviando mensaje, el cliente quizas está desconectado
                 cleanup();
             }
         }
@@ -210,21 +190,22 @@ public class GameServer {
         }
     }
     
-    /**
-     * Motor del juego que maneja la lógica y envía actualizaciones
-     */
+    // Motor del juego que maneja la lógica
     private class GameEngine implements Runnable {
         private GameState gameState;
         private Random random;
+        private long lastFoodGenerationTime;
+        private static final long FOOD_GENERATION_INTERVAL = 3000; // cada 3 segundos aparece una nueva comida 
         
         public GameEngine() {
             gameState = new GameState(BOARD_WIDTH, BOARD_HEIGHT);
             random = new Random();
+            lastFoodGenerationTime = System.currentTimeMillis();
             initializeBoard();
         }
         
         private void initializeBoard() {
-            // Inicializar tablero vacío
+            // Inicializar mapa vacio
             Point[][] board = gameState.getBoard();
             for (int y = 0; y < BOARD_HEIGHT; y++) {
                 for (int x = 0; x < BOARD_WIDTH; x++) {
@@ -237,12 +218,17 @@ public class GameServer {
         public void run() {
             while (running) {
                 if (gameState.isGameRunning()) {
-                    updateGame();
+                    updateGame();                    
+                    // Generar nueva fruta cada 3 segundos
+                    long currentTime = System.currentTimeMillis();
+                    if (currentTime - lastFoodGenerationTime >= FOOD_GENERATION_INTERVAL) {
+                        generateFood();
+                        lastFoodGenerationTime = currentTime;
+                    }                    
                     broadcastGameState();
                 } else {
                     // Juego en pausa
-                }
-                
+                }                
                 try {
                     int sleepTime = (int)(BASE_GAME_SPEED / gameState.getDifficulty().getSpeedMultiplier());
                     Thread.sleep(sleepTime);
@@ -256,30 +242,35 @@ public class GameServer {
             Snake[] snakes = gameState.getSnakes();
             if (snakes == null) {
                 return;
-            }
-            
+            }            
             // Mover todas las serpientes
             for (Snake snake : snakes) {
                 if (snake != null && snake.isAlive()) {
-                    snake.move();
-                    
+                    snake.move();                    
                     // Verificar colisiones
                     if (checkCollisions(snake)) {
                         snake.setAlive(false);
                         continue;
+                    }                    
+                    // Verificar si come alguna fruta
+                    Food eatenFood = null;
+                    for (Food food : gameState.getFoods()) {
+                        if (food != null && snake.getHead().equals(food.getPosition())) {
+                            eatenFood = food;
+                            break;
+                        }
                     }
                     
-                    // Verificar si comió comida
-                    if (snake.getHead().equals(gameState.getFood())) {
-                        snake.grow();
-                        generateFood();
+                    if (eatenFood != null) {
+                        snake.grow(eatenFood);
+                        gameState.getFoods().remove(eatenFood); // Remover la fruta comida
                     } else {
                         snake.removeTail();
                     }
                 }
             }
             
-            // Verificar si el juego debe terminar
+            // Verificar si el juego debe acabar
             int alivePlayers = 0;
             for (Snake snake : snakes) {
                 if (snake != null && snake.isAlive()) {
@@ -287,12 +278,12 @@ public class GameServer {
                 }
             }
             
-            // Solo terminar si NO hay jugadores vivos
+            // Solo terminar si no hay jugadores vivos
             if (alivePlayers == 0) {
                 gameState.setGameRunning(false);
                 broadcastMessage(new Message(Message.Type.GAME_OVER, gameState));
             }
-            // En modo multijugador, ganar cuando solo queda 1 vivo
+            // Solo terminar si solo queda 1 vivo (para mas de un jugador)
             else if (alivePlayers == 1 && clients.size() > 1) {
                 gameState.setGameRunning(false);
                 broadcastMessage(new Message(Message.Type.GAME_OVER, gameState));
@@ -300,27 +291,23 @@ public class GameServer {
         }
         
         private boolean checkCollisions(Snake snake) {
-            Point head = snake.getHead();
-            
-            // Colisión con bordes
+            Point head = snake.getHead();            
+            // Choque con bordes
             if (head.x < 0 || head.x >= BOARD_WIDTH || 
                 head.y < 0 || head.y >= BOARD_HEIGHT) {
                 return true;
-            }
-            
-            // Colisión con paredes (en dificultad media y difícil)
+            }            
+            // Choque con paredes
             if (gameState.getDifficulty() != GameState.Difficulty.EASY) {
                 if (checkWallCollision(head)) {
                     return true;
                 }
-            }
-            
-            // Colisión consigo mismo
+            }            
+            // Choque consigo mismo
             if (snake.checkSelfCollision()) {
                 return true;
-            }
-            
-            // Colisión con otras serpientes
+            }            
+            // CHoque con otras serpientes
             Snake[] snakes = gameState.getSnakes();
             for (Snake other : snakes) {
                 if (other != null && other != snake && other.isAlive()) {
@@ -328,53 +315,62 @@ public class GameServer {
                         return true;
                     }
                 }
-            }
-            
+            }            
             return false;
         }
         
         private boolean checkWallCollision(Point point) {
-            // Paredes que salen SOLO de los bordes, sin formar cruces
-            // Crear un laberinto simple con entradas y salidas
-            
-            // Pared que sale del borde SUPERIOR (hacia abajo)
-            boolean topWall = (point.x == 15 && point.y >= 0 && point.y <= 8);
-            
-            // Pared que sale del borde INFERIOR (hacia arriba)  
-            boolean bottomWall = (point.x == 25 && point.y >= BOARD_HEIGHT-9 && point.y < BOARD_HEIGHT);
-            
-            // Pared que sale del borde IZQUIERDO (hacia la derecha)
-            boolean leftWall = (point.y == 12 && point.x >= 0 && point.x <= 10);
-            
-            // Pared que sale del borde DERECHO (hacia la izquierda)
-            boolean rightWall = (point.y == 18 && point.x >= BOARD_WIDTH-11 && point.x < BOARD_WIDTH);
-            
-            // Pequeño obstáculo central aislado (sin tocar otras paredes)
-            boolean centerBlock = (point.x >= BOARD_WIDTH/2-1 && point.x <= BOARD_WIDTH/2+1 && 
-                                  point.y >= BOARD_HEIGHT/2-1 && point.y <= BOARD_HEIGHT/2+1);
+            // Pared que sale del borde arriba
+            boolean topWall = (point.x == BOARD_WIDTH/2 && point.y >= 0 && point.y <= 8);            
+            // Pared que sale del borde abajo  
+            boolean bottomWall = (point.x == BOARD_WIDTH/2 && point.y >= BOARD_HEIGHT-9 && point.y < BOARD_HEIGHT);            
+            // Pared que sale del borde izquierdo
+            boolean leftWall = (point.y == BOARD_HEIGHT/2 && point.x >= 0 && point.x <= 10);            
+            // Pared que sale del borde derecho
+            boolean rightWall = (point.y == BOARD_HEIGHT/2 && point.x >= BOARD_WIDTH-11 && point.x < BOARD_WIDTH);            
+            // Obstáculo central
+            boolean centerBlock = (point.x >= BOARD_WIDTH/2-1 && point.x <= BOARD_WIDTH/2+1 && point.y >= BOARD_HEIGHT/2-1 && point.y <= BOARD_HEIGHT/2+1);
             
             return topWall || bottomWall || leftWall || rightWall || centerBlock;
         }
         
         private void generateFood() {
-            Point food;
-            Snake[] snakes = gameState.getSnakes();
-            
+            Point foodPosition;
+            Snake[] snakes = gameState.getSnakes();    
             do {
-                food = new Point(random.nextInt(BOARD_WIDTH), random.nextInt(BOARD_HEIGHT));
-            } while (isFoodOnSnake(food, snakes) || 
-                    (gameState.getDifficulty() != GameState.Difficulty.EASY && checkWallCollision(food)));
-            
-            gameState.setFood(food);
+                foodPosition = new Point(random.nextInt(BOARD_WIDTH), random.nextInt(BOARD_HEIGHT));
+            } while (isFoodOnSnake(foodPosition, snakes) || 
+                    isFoodOnExistingFood(foodPosition) ||
+                    (gameState.getDifficulty() != GameState.Difficulty.EASY && checkWallCollision(foodPosition)));
+            // Generar puntaje de comida random
+            Food.FoodType foodType;
+            int randomValue = random.nextInt(100);
+            if (randomValue < 60) {
+                foodType = Food.FoodType.SMALL;
+            } else if (randomValue < 90) {
+                foodType = Food.FoodType.MEDIUM;
+            } else {
+                foodType = Food.FoodType.LARGE;
+            }            
+            Food newFood = new Food(foodPosition, foodType);
+            gameState.getFoods().add(newFood); // Agregar a la lista en lugar de reemplazar
         }
         
-        private boolean isFoodOnSnake(Point food, Snake[] snakes) {
-            if (snakes == null) return false;
-            
+        private boolean isFoodOnExistingFood(Point position) {
+            for (Food existingFood : gameState.getFoods()) {
+                if (existingFood.getPosition().equals(position)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        private boolean isFoodOnSnake(Point foodPosition, Snake[] snakes) {
+            if (snakes == null) return false;            
             for (Snake snake : snakes) {
                 if (snake != null) {
                     for (Point segment : snake.getBody()) {
-                        if (segment.equals(food)) {
+                        if (segment.equals(foodPosition)) {
                             return true;
                         }
                     }
@@ -384,36 +380,39 @@ public class GameServer {
         }
         
         private void broadcastGameState() {
-            // CREAR UN NUEVO GAMESTATE PARA EVITAR PROBLEMAS DE REFERENCIA
+            // crear un nuevo cliente
             GameState freshGameState = new GameState(BOARD_WIDTH, BOARD_HEIGHT);
             freshGameState.setDifficulty(gameState.getDifficulty());
             freshGameState.setGameRunning(gameState.isGameRunning());
-            freshGameState.setFood(new Point(gameState.getFood().x, gameState.getFood().y));
-            freshGameState.setLastUpdateTime(System.currentTimeMillis());
             
-            // CLONAR LAS SERPIENTES CON NUEVOS OBJETOS POINT
+            // Clonar todas las frutas
+            java.util.List<Food> freshFoods = new java.util.ArrayList<>();
+            for (Food originalFood : gameState.getFoods()) {
+                if (originalFood != null) {
+                    freshFoods.add(new Food(originalFood.getPosition(), originalFood.getType()));
+                }
+            }
+            freshGameState.setFoods(freshFoods);            
+            freshGameState.setLastUpdateTime(System.currentTimeMillis());            
+            // mostrar serpientes
             Snake[] freshSnakes = new Snake[gameState.getSnakes().length];
             for (int i = 0; i < gameState.getSnakes().length; i++) {
                 Snake originalSnake = gameState.getSnakes()[i];
                 if (originalSnake != null) {
-                    // Crear nueva serpiente con puntos clonados
+                    // Crear nueva serpiente
                     Snake freshSnake = new Snake(originalSnake.getPlayerId(), 
-                                               new Point(0, 0), // Posición temporal
+                                               new Point(0, 0),
                                                originalSnake.getColor());
-                    
-                    // Limpiar y agregar cada segmento como nuevo Point
                     freshSnake.getBody().clear();
                     for (Point segment : originalSnake.getBody()) {
                         freshSnake.getBody().add(new Point(segment.x, segment.y));
-                    }
-                    
+                    }                    
                     freshSnake.setAlive(originalSnake.isAlive());
                     freshSnake.setScore(originalSnake.getScore());
                     freshSnakes[i] = freshSnake;
                 }
             }
-            freshGameState.setSnakes(freshSnakes);
-            
+            freshGameState.setSnakes(freshSnakes);            
             broadcastMessage(new Message(Message.Type.GAME_STATE, freshGameState));
         }
         
@@ -441,25 +440,23 @@ public class GameServer {
         public void startGame() {
             // Inicializar serpientes para los jugadores conectados
             Snake[] snakes = new Snake[MAX_PLAYERS];
-            Color[] colors = {Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW};
-            
+            Color[] colors = {Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW};            
             for (int i = 0; i < clients.size(); i++) {
                 Point startPos = getStartPosition(i);
                 snakes[i] = new Snake(i + 1, startPos, colors[i]);
-            }
-            
+            }            
             gameState.setSnakes(snakes);
             generateFood();
             gameState.setGameRunning(true);
         }
         
         private Point getStartPosition(int playerIndex) {
-            // Posiciones de inicio muy seguras, con espacio suficiente hacia la izquierda para 3 segmentos
+            // Posiciones de inicio
             switch (playerIndex) {
-                case 0: return new Point(10, 8);                          // Esquina superior izq (espacio suficiente)
-                case 1: return new Point(BOARD_WIDTH - 8, 8);             // Esquina superior der 
-                case 2: return new Point(10, BOARD_HEIGHT - 8);           // Esquina inferior izq
-                case 3: return new Point(BOARD_WIDTH - 8, BOARD_HEIGHT - 8); // Esquina inferior der
+                case 0: return new Point(10, 8);
+                case 1: return new Point(BOARD_WIDTH - 8, 8); 
+                case 2: return new Point(10, BOARD_HEIGHT - 8);
+                case 3: return new Point(BOARD_WIDTH - 8, BOARD_HEIGHT - 8);
                 default: return new Point(BOARD_WIDTH/2, BOARD_HEIGHT/2);
             }
         }
@@ -479,18 +476,14 @@ public class GameServer {
         GameServer server = null;
         try {
             server = new GameServer(port);
-            
-            // Agregar hook para shutdown graceful
             final GameServer finalServer = server;
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 finalServer.stop();
-            }));
-            
-            // Crear un hilo para escuchar comandos del usuario
+            }));            
+            // Crear hilo para comandos del usuario
             final GameServer serverRef = server;
             Thread commandThread = new Thread(() -> {
-                Scanner scanner = new Scanner(System.in);
-                
+                Scanner scanner = new Scanner(System.in);                
                 while (serverRef.running) {
                     try {
                         if (scanner.hasNextLine()) {
@@ -501,24 +494,23 @@ public class GameServer {
                                 break;
                             }
                         }
-                        Thread.sleep(100); // Pequeña pausa para no consumir CPU
+                        Thread.sleep(100);
                     } catch (InterruptedException e) {
                         break;
                     }
                 }
             });
             commandThread.setDaemon(true);
-            commandThread.start();
-            
+            commandThread.start();            
             server.start();
             
         } catch (IOException e) {
             System.err.println("Error iniciando servidor: " + e.getMessage());
             if (e.getMessage().contains("Address already in use")) {
                 System.err.println("SOLUCION: El puerto " + port + " ya está en uso.");
-                System.err.println("- Opcion 1: Usa otro puerto: java -cp bin server.GameServer " + (port + 1));
-                System.err.println("- Opcion 2: Espera unos segundos y vuelve a intentar");
-                System.err.println("- Opcion 3: Cierra otros programas que usen el puerto " + port);
+                System.err.println("\tOpcion 1: Usa otro puerto: java -cp bin server.GameServer " + (port + 1));
+                System.err.println("\tOpcion 2: Espera unos segundos y vuelve a intentar");
+                System.err.println("\tOpcion 3: Cierra otros programas que usen el puerto " + port);
             }
         } finally {
             if (server != null) {

@@ -1,12 +1,12 @@
 @echo off
-REM Script para compilar el proyecto Snake Distribuido en Windows
+REM Script para compilar el juego Snake
 
-echo Compilando proyecto Snake Distribuido...
+echo Compilando juego...
 
-REM Crear directorio bin si no existe
+REM Creando directorio bin si no existe
 if not exist bin mkdir bin
 
-REM Compilar todas las clases
+REM Compilando las clases
 javac -d bin src/common/*.java src/server/*.java src/client/*.java
 
 if %errorlevel% equ 0 (

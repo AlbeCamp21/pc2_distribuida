@@ -1,8 +1,5 @@
 @echo off
-REM Script para ejecutar el cliente Snake en Windows
-
-echo Iniciando cliente Snake...
-
+REM Script para ejecutar el cliente
+echo Iniciando cliente del juego...
 java -cp bin client.SnakeClient
-
 pause
