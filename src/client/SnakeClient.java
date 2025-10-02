@@ -254,8 +254,7 @@ public class SnakeClient extends JFrame {
                     break;
                     
                 case ERROR:
-                    JOptionPane.showMessageDialog(this, "Error del servidor: " + message.getData(), 
-                                                "Error", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Error del servidor: " + message.getData(), "Error", JOptionPane.ERROR_MESSAGE);
                     break;
             }
         });
@@ -316,7 +315,7 @@ public class SnakeClient extends JFrame {
             super.paintComponent(g);            
             if (gameState == null) {
                 g.setColor(Color.WHITE);
-                g.setFont(new Font("Arial", Font.BOLD, 16));
+                g.setFont(new Font("Segoe UI", Font.BOLD, 16));
                 FontMetrics fm = g.getFontMetrics();
                 String text = "Conectate al servidor para jugar";
                 int x = (getWidth() - fm.stringWidth(text)) / 2;
@@ -390,7 +389,7 @@ public class SnakeClient extends JFrame {
                 g.setColor(snake.getColor());
             }            
             // Configurar fuente para las letras
-            Font font = new Font("Monospaced", Font.BOLD, CELL_SIZE - 2);
+            Font font = new Font("Segoe UI", Font.BOLD, CELL_SIZE - 2);
             g.setFont(font);
             FontMetrics fm = g.getFontMetrics();            
             // Obtener la letra del cuerpo basada en el ID del jugador (A=1, B=2, C=3, D=4)
@@ -431,7 +430,7 @@ public class SnakeClient extends JFrame {
             g.setColor(new Color(128, 0, 0));
             g.drawOval(position.x * CELL_SIZE + 2, position.y * CELL_SIZE + 2, CELL_SIZE - 4, CELL_SIZE - 4);            
             // fuente
-            Font font = new Font("Monospaced", Font.BOLD, CELL_SIZE - 6);
+            Font font = new Font("Segoe UI", Font.BOLD, CELL_SIZE - 6);
             g.setFont(font);
             FontMetrics fm = g.getFontMetrics();
             String text = "+" + food.getPoints();            
